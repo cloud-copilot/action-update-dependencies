@@ -1,6 +1,25 @@
 name: "Automated Dependency Update"
-description: "Automatically updates dependencies, builds, tests, and creates a PR if changes exist."
+description: "Automatically updates dependencies, builds, tests, creates a PR, and merges it if changes exist."
 author: "Cloud Copilot"
+
+inputs:
+  base-branch:
+    description: "Base branch for the dependency update pull request."
+    required: false
+    default: "main"
+  merge-method:
+    description: "Merge method to use. Supported values: squash, merge, rebase."
+    required: false
+    default: "squash"
+  check-workflow:
+    description: "Optional workflow name, ID, or filename to run on the update branch before merging. The workflow must support workflow_dispatch."
+    required: false
+    default: ""
+
+outputs:
+  pull-request-url:
+    description: "URL of the pull request created by this action."
+    value: ${{ steps.create_pr.outputs.pull-request-url }}
 
 runs:
   using: "composite"
@@ -63,9 +82,64 @@ runs:
 
     - name: Create Pull Request
       if: steps.check_changes.outputs.changesDetected == 'true'
+      id: create_pr
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
         PR_TITLE="chore(deps): update dependencies $(date +'%Y-%b-%d')"
-        gh pr create -B main -H $BRANCH --title "$PR_TITLE" --body 'Automated dependency updates'
+        PR_URL="$(gh pr create -B "${{ inputs.base-branch }}" -H "$BRANCH" --title "$PR_TITLE" --body 'Automated dependency updates')"
+        echo "PR_URL=$PR_URL" >> "$GITHUB_ENV"
+        echo "pull-request-url=$PR_URL" >> "$GITHUB_OUTPUT"
+
+    - name: Run check workflow
+      if: steps.check_changes.outputs.changesDetected == 'true' && inputs.check-workflow != ''
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        UPDATE_SHA="$(git rev-parse HEAD)"
+        gh workflow run "${{ inputs.check-workflow }}" --ref "$BRANCH"
+
+        CHECK_RUN_ID=""
+
+        for _ in {1..30}; do
+          CHECK_RUN_ID="$(gh run list --workflow "${{ inputs.check-workflow }}" --branch "$BRANCH" --commit "$UPDATE_SHA" --event workflow_dispatch --json databaseId --jq '.[0].databaseId // empty' --limit 10)"
+          if [ -n "$CHECK_RUN_ID" ]; then
+            break
+          fi
+
+          echo "Check workflow run has not appeared yet; waiting..."
+          sleep 10
+        done
+
+        if [ -z "$CHECK_RUN_ID" ]; then
+          echo "::error::Could not find a workflow_dispatch run for '${{ inputs.check-workflow }}' on branch '$BRANCH' at commit '$UPDATE_SHA'. Ensure the workflow exists on the default branch and includes workflow_dispatch."
+          exit 1
+        fi
+
+        gh run watch "$CHECK_RUN_ID" --exit-status --interval 30
+
+    - name: Merge Pull Request
+      if: steps.check_changes.outputs.changesDetected == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        case "${{ inputs.merge-method }}" in
+          squash)
+            MERGE_FLAG="--squash"
+            ;;
+          merge)
+            MERGE_FLAG="--merge"
+            ;;
+          rebase)
+            MERGE_FLAG="--rebase"
+            ;;
+          *)
+            echo "::error::Invalid merge-method '${{ inputs.merge-method }}'. Supported values are: squash, merge, rebase."
+            exit 1
+            ;;
+        esac
+
+        gh pr merge "$PR_URL" "$MERGE_FLAG" --delete-branch

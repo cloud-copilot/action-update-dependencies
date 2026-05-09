@@ -1,6 +1,6 @@
 # Update Dependencies
 
-A shared job to update all dependencies and make a pull request.
+A shared job to update all dependencies, build, test, create a pull request, merge it, and delete the update branch.
 
 If you like this, we recommend making your own fork and customizing it to your needs.
 
@@ -20,9 +20,48 @@ jobs:
   update-dependencies:
     runs-on: ubuntu-latest
     permissions:
-      contents: write       # Push branches
-      pull-requests: write  # Create PRs
+      contents: write       # Push branches, merge PRs, delete branches
+      pull-requests: write  # Create and merge PRs
+      actions: write        # Run optional check workflows
     steps:
       - name: Run dependency update
         uses: cloud-copilot/update-dependencies@main
+        with:
+          check-workflow: ci.yml
+```
+
+By default, the action merges after its own `npm run build` and `npm test` steps pass. If `check-workflow` is set, the action also runs that workflow on the update branch and waits for it to pass before merging.
+
+## Repository setup
+
+Repositories using this action need:
+
+- The workflow permissions above.
+- Settings > Actions > General > Workflow permissions > Allow GitHub Actions to create and approve pull requests.
+- Branch protection rules that allow this workflow actor to merge after the action's build and test steps pass. Required approving reviews, required PR-only checks, or merge queues can block the final merge step.
+- If `check-workflow` is set, that workflow must exist on the default branch and include `workflow_dispatch`.
+
+## Inputs
+
+```yaml
+- name: Run dependency update
+  uses: cloud-copilot/update-dependencies@main
+  with:
+    base-branch: main
+    merge-method: squash
+    check-workflow: ci.yml
+```
+
+Available inputs:
+
+- `base-branch`: PR base branch. Defaults to `main`.
+- `merge-method`: `squash`, `merge`, or `rebase`. Defaults to `squash`.
+- `check-workflow`: optional workflow name, ID, or filename to run on the update branch before merging. Workflow filenames are relative to `.github/workflows`, so use `ci.yml`, not `.github/workflows/ci.yml`.
+
+Example check workflow trigger:
+
+```yaml
+on:
+  pull_request:
+  workflow_dispatch:
 ```
