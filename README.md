@@ -50,6 +50,7 @@ Repositories using this action need:
     base-branch: main
     merge-method: squash
     check-workflow: ci.yml
+    post-merge-workflow: release.yml
 ```
 
 Available inputs:
@@ -57,11 +58,14 @@ Available inputs:
 - `base-branch`: PR base branch. Defaults to `main`.
 - `merge-method`: `squash`, `merge`, or `rebase`. Defaults to `squash`.
 - `check-workflow`: optional workflow name, ID, or filename to run on the update branch before merging. Workflow filenames are relative to `.github/workflows`, so use `ci.yml`, not `.github/workflows/ci.yml`.
+- `post-merge-workflow`: optional workflow name, ID, or filename to run on the base branch after merging. Workflow filenames are relative to `.github/workflows`, so use `release.yml`, not `.github/workflows/release.yml`.
 
-Example check workflow trigger:
+Example check and post-merge workflow trigger:
 
 ```yaml
 on:
   pull_request:
   workflow_dispatch:
 ```
+
+Because merges created with `github.token` do not trigger `push` workflows, use `post-merge-workflow` for workflows such as releases that should run after the dependency PR is merged.

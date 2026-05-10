@@ -15,6 +15,10 @@ inputs:
     description: "Optional workflow name, ID, or filename to run on the update branch before merging. The workflow must support workflow_dispatch."
     required: false
     default: ""
+  post-merge-workflow:
+    description: "Optional workflow name, ID, or filename to run on the base branch after merging. The workflow must support workflow_dispatch."
+    required: false
+    default: ""
 
 outputs:
   pull-request-url:
@@ -143,3 +147,31 @@ runs:
         esac
 
         gh pr merge "$PR_URL" "$MERGE_FLAG" --delete-branch
+
+    - name: Run post-merge workflow
+      if: steps.check_changes.outputs.changesDetected == 'true' && inputs.post-merge-workflow != ''
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        BASE_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${{ inputs.base-branch }}" --jq '.object.sha')"
+        gh workflow run "${{ inputs.post-merge-workflow }}" --ref "${{ inputs.base-branch }}"
+
+        POST_MERGE_RUN_ID=""
+
+        for _ in {1..30}; do
+          POST_MERGE_RUN_ID="$(gh run list --workflow "${{ inputs.post-merge-workflow }}" --branch "${{ inputs.base-branch }}" --commit "$BASE_SHA" --event workflow_dispatch --json databaseId --jq '.[0].databaseId // empty' --limit 10)"
+          if [ -n "$POST_MERGE_RUN_ID" ]; then
+            break
+          fi
+
+          echo "Post-merge workflow run has not appeared yet; waiting..."
+          sleep 10
+        done
+
+        if [ -z "$POST_MERGE_RUN_ID" ]; then
+          echo "::error::Could not find a workflow_dispatch run for '${{ inputs.post-merge-workflow }}' on branch '${{ inputs.base-branch }}' at commit '$BASE_SHA'. Ensure the workflow exists on the default branch and includes workflow_dispatch."
+          exit 1
+        fi
+
+        gh run watch "$POST_MERGE_RUN_ID" --exit-status --interval 30
