@@ -51,6 +51,16 @@ runs:
           echo "changesDetected=true" >> $GITHUB_OUTPUT
         fi
 
+    - name: Format project
+      if: steps.check_changes.outputs.changesDetected == 'true'
+      shell: bash
+      run: |
+        if npm pkg get scripts.format | grep -qv '^{}$'; then
+          npm run format
+        else
+          echo "No format script found; skipping format."
+        fi
+
     - name: Build project
       if: steps.check_changes.outputs.changesDetected == 'true'
       shell: bash
