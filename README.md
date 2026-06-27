@@ -2,6 +2,8 @@
 
 A shared job to update all dependencies, build, test, create a pull request, merge it, and delete the update branch.
 
+When dependency updates change formatting tool behavior, the action runs `npm run format` when the target project defines a `format` script. Formatting changes are included in the dependency update pull request before build and test checks run.
+
 If you like this, we recommend making your own fork and customizing it to your needs.
 
 # Usage
@@ -30,7 +32,7 @@ jobs:
           check-workflow: ci.yml
 ```
 
-By default, the action merges after its own `npm run build` and `npm test` steps pass. If `check-workflow` is set, the action also runs that workflow on the update branch and waits for it to pass before merging.
+By default, the action formats changed projects when a `format` script exists, then merges after its own `npm run build` and `npm test` steps pass. If `check-workflow` is set, the action also runs that workflow on the update branch and waits for it to pass before merging.
 
 ## Repository setup
 
