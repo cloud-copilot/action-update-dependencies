@@ -35,7 +35,6 @@ runs:
         cache: 'npm'
     - name: Upgrade npm
       shell: bash
-      # npm/cli#9787: npm 10 can crash resolving optional peer dependencies.
       run: npm install --global npm@^12
     - name: Update Dependencies
       shell: bash
