@@ -27,7 +27,7 @@ jobs:
       actions: write        # Run optional check workflows
     steps:
       - name: Run dependency update
-        uses: cloud-copilot/update-dependencies@main
+        uses: cloud-copilot/action-update-dependencies@<immutable-commit-sha>
         with:
           check-workflow: ci.yml
 ```
@@ -47,7 +47,7 @@ Repositories using this action need:
 
 ```yaml
 - name: Run dependency update
-  uses: cloud-copilot/update-dependencies@main
+  uses: cloud-copilot/action-update-dependencies@<immutable-commit-sha>
   with:
     base-branch: main
     merge-method: squash
