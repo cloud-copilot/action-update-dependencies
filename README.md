@@ -4,7 +4,7 @@ A shared job to update all dependencies, build, test, create a pull request, mer
 
 When dependency updates change formatting tool behavior, the action runs `npm run format` when the target project defines a `format` script. Formatting changes are included in the dependency update pull request before build and test checks run.
 
-The action uses Node 24 and npm 12.0.2. The explicit npm version avoids the npm 10 optional-peer-resolution crash described in [npm/cli#9787](https://github.com/npm/cli/issues/9787).
+The action uses Node 24 and the latest npm 12 release. The explicit npm major version avoids the npm 10 optional-peer-resolution crash described in [npm/cli#9787](https://github.com/npm/cli/issues/9787).
 
 If you like this, we recommend making your own fork and customizing it to your needs.
 
