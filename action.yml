@@ -38,9 +38,11 @@ runs:
       run: npm install --global npm@^12
     - name: Update Dependencies
       shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
       run: |
         npm install
-        npm update
+        node "$ACTION_PATH/update-retry.mjs"
 
     - name: Check for changes
       id: check_changes
