@@ -2,6 +2,10 @@
 
 A shared job to update all dependencies, build, test, create a pull request, merge it, and delete the update branch.
 
+During `npm update`, the action retries up to twice (after 60 and 120 seconds) only when npm reports a public `@actsecurity` tarball 404 and public registry metadata confirms that exact tarball was published in the last ten minutes. Metadata failures and other npm errors are not retried. Persistent failures still fail the step. Retrying npm update can rerun package lifecycle scripts. `npm install` and later build, test, PR, merge, and release steps are not retried.
+
+Run the retry and action-wiring tests with `node --test *.test.mjs`.
+
 When dependency updates change formatting tool behavior, the action runs `npm run format` when the target project defines a `format` script. Formatting changes are included in the dependency update pull request before build and test checks run.
 
 If you like this, we recommend making your own fork and customizing it to your needs.
